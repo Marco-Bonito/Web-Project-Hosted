@@ -83,7 +83,7 @@ app.all('/api', async (req, res) => {
             break;
 
         default:
-            res.status(400).json({ error: 'Invalid action' });
+            res.status(400).json({ error: `Invalid Action ${action}`});
     }
 });
 
