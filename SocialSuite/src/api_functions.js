@@ -50,8 +50,8 @@ export default class ApiFunctions {
         return data
     }
     
-    validate_data(data , necessaryField = [] , optionalField = []){
-        for (const key of data){
+    validate_data(data = {} , necessaryField = [] , optionalField = []){
+        for (const key of Object.keys(data)){
             console.log(key)
         }
         necessaryField.forEach((field)=>{
