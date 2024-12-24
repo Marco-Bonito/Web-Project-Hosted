@@ -1,15 +1,18 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore} from 'firebase/firestore'
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const firebaseConfig = {
-    apiKey: "AIzaSyC5iNTeEcejLMwYiIkB7tItDI9yF8JLDgw",
-    authDomain: "social-suite-ll-mb.firebaseapp.com",
-    projectId: "social-suite-ll-mb",
-    storageBucket: "social-suite-ll-mb.firebasestorage.app",
-    messagingSenderId: "1037078476505",
-    appId: "1:1037078476505:web:1f5e6237d2f3782b2530c8",
-    measurementId: "G-P46QFY1SCR"
+    apiKey: process.env.FIREBASE_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.FIREBASE_APP_ID,
+    measurementId: process.env.FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
