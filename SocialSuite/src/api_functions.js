@@ -1,11 +1,18 @@
-import { auth , firestore } from '../firebase_config.js'
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-
+import { auth, firestore } from '../firebase_config.js';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut 
+} from 'firebase/auth';
+import { 
+    doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, getDocs 
+} from 'firebase/firestore';
 
 export default class ApiFunctions {
 
-    async login_user(userData = {}){
-        this.validate_data(userData , ['email' , 'password']);
+    // Funzione di login
+    async login_user(userData = {}) {
+        this.validate_data(userData, ['email', 'password']);
         try {
             const userCredential = await signInWithEmailAndPassword(auth, userData.email, userData.password);
             return {
@@ -23,8 +30,9 @@ export default class ApiFunctions {
         }
     }
 
-    async register_user(userData = {}){
-        this.validate_data(userData , ['email' , 'password']);
+    // Funzione di registrazione
+    async register_user(userData = {}) {
+        this.validate_data(userData, ['email', 'password']);
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
             return {
@@ -42,56 +50,143 @@ export default class ApiFunctions {
         }
     }
 
-    async get_user_data(userData = {}){
-        this.validate_data(userData , [] , ['ID' , 'email']);
-        return { success: true, data: userData }
-    }
-
-    async create_user(userData = {}){
-        this.validate_data(userData , ['email']);
-        return { success: true, data: userData }
-    }
-
-    async update_user(userData = {}){
-        this.validate_data(userData , [] ,['ID' , 'email']);
-        return { success: true, data: userData }
-    }
-
-    async delete_user(userData = {}){
-        this.validate_data(userData , [] , ['ID' , 'email']);
-        return { success: true, data: userData }
-    }
-
-    async create_document(data = {}){
-        this.validate_data(data , ['mainCollectionName'] , ['mainDocID' , 'subCollectionName' , 'subCollectionName']);
-        return { success: true, data: data }
-    }
-
-    async update_document(data = {}){
-        this.validate_data(data , ['mainCollectionName'] , ['mainDocID' , 'subCollectionName' , 'subCollectionName']);
-        return { success: true, data: data }
-    }
-
-    async get_document(data = {}){
-        this.validate_data(data , ['mainCollectionName'] , ['mainDocID' , 'subCollectionName' , 'subCollectionName']);
-        return { success: true, data: data }
-    }
-
-    async delete_document(data = {}){
-        this.validate_data(data , ['mainCollectionName'] , ['mainDocID' , 'subCollectionName' , 'subCollectionName']);
-        return { success: true, data: data }
-    }
-    
-    validate_data(data = {} , necessaryField = [] , optionalField = []){
-        for (const key of Object.keys(data)){
-            console.log(key)
+    // Funzione di logout
+    async logout_user() {
+        try {
+            await signOut(auth);
+            return { success: true, message: 'Logout effettuato con successo' };
+        } catch (error) {
+            return { success: false, error: error.message };
         }
-        necessaryField.forEach((field)=>{
-            console.log(field)
-        })
+    }
 
-        optionalField.forEach((optField)=>{
-            console.log(optField)
-        })
+    // Funzioni per gestire i dati utente su Firestore
+    async get_user_data(userData = {}) {
+        this.validate_data(userData, ['ID']);
+        try {
+            const userDoc = doc(firestore, 'users', userData.ID);
+            const snapshot = await getDoc(userDoc);
+            if (snapshot.exists()) {
+                return { success: true, data: snapshot.data() };
+            } else {
+                return { success: false, error: 'Utente non trovato' };
+            }
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async create_user(userData = {}) {
+        this.validate_data(userData, ['ID']);
+        try {
+            const userDoc = doc(firestore, 'users', userData.ID);
+            await setDoc(userDoc, userData);
+            return { success: true, message: 'Utente creato con successo' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async update_user(userData = {}) {
+        this.validate_data(userData, [], ['ID']);
+        try {
+            const userDoc = doc(firestore, 'users', userData.ID);
+            await updateDoc(userDoc, userData);
+            return { success: true, message: 'Utente aggiornato con successo' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async delete_user(userData = {}) {
+        this.validate_data(userData, ['ID']);
+        try {
+            const userDoc = doc(firestore, 'users', userData.ID);
+            await deleteDoc(userDoc);
+            return { success: true, message: 'Utente eliminato con successo' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Funzioni generalizzate per Firestore
+    async create_document(data = {}) {
+        this.validate_data(data, ['mainCollectionName'], ['mainDocID', 'subCollectionName', 'subDocID']);
+        try {
+            let ref = data.mainDocID 
+                ? doc(firestore, data.mainCollectionName, data.mainDocID) 
+                : collection(firestore, data.mainCollectionName);
+            
+            if (data.subCollectionName) {
+                ref = data.subDocID 
+                    ? doc(ref, data.subCollectionName, data.subDocID) 
+                    : collection(ref, data.subCollectionName);
+            }
+
+            await setDoc(ref, data.documentData);
+            return { success: true, message: 'Documento creato con successo' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async get_document(data = {}) {
+        this.validate_data(data, ['mainCollectionName'], ['mainDocID', 'subCollectionName', 'subDocID']);
+        try {
+            let ref = data.mainDocID 
+                ? doc(firestore, data.mainCollectionName, data.mainDocID) 
+                : collection(firestore, data.mainCollectionName);
+
+            if (data.subCollectionName) {
+                ref = data.subDocID 
+                    ? doc(ref, data.subCollectionName, data.subDocID) 
+                    : collection(ref, data.subCollectionName);
+            }
+
+            const snapshot = await getDoc(ref);
+            if (snapshot.exists()) {
+                return { success: true, data: snapshot.data() };
+            } else {
+                return { success: false, error: 'Documento non trovato' };
+            }
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async update_document(data = {}) {
+        this.validate_data(data, ['mainCollectionName', 'mainDocID'], ['subCollectionName', 'subDocID']);
+        try {
+            let ref = doc(firestore, data.mainCollectionName, data.mainDocID);
+            if (data.subCollectionName && data.subDocID) {
+                ref = doc(ref, data.subCollectionName, data.subDocID);
+            }
+
+            await updateDoc(ref, data.documentData);
+            return { success: true, message: 'Documento aggiornato con successo' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async delete_document(data = {}) {
+        this.validate_data(data, ['mainCollectionName', 'mainDocID'], ['subCollectionName', 'subDocID']);
+        try {
+            let ref = doc(firestore, data.mainCollectionName, data.mainDocID);
+            if (data.subCollectionName && data.subDocID) {
+                ref = doc(ref, data.subCollectionName, data.subDocID);
+            }
+
+            await deleteDoc(ref);
+            return { success: true, message: 'Documento eliminato con successo' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    validate_data(data = {}, necessaryField = [], optionalField = []) {
+        for (const field of necessaryField) {
+            if (!data[field]) throw new Error(`Il campo ${field} è necessario.`);
+        }
     }
 }
