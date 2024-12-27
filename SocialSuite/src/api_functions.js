@@ -9,8 +9,6 @@ import {
 } from 'firebase/firestore';
 
 export default class ApiFunctions {
-
-    // Funzione di login
     async login_user(userData = {}) {
         this.validate_data(userData, ['email', 'password']);
         try {
@@ -30,7 +28,6 @@ export default class ApiFunctions {
         }
     }
 
-    // Funzione di registrazione
     async register_user(userData = {}) {
         this.validate_data(userData, ['email', 'password']);
         try {
@@ -50,7 +47,6 @@ export default class ApiFunctions {
         }
     }
 
-    // Funzione di logout
     async logout_user() {
         try {
             await signOut(auth);
@@ -60,7 +56,6 @@ export default class ApiFunctions {
         }
     }
 
-    // Funzioni per gestire i dati utente su Firestore
     async get_user_data(userData = {}) {
         this.validate_data(userData, ['ID']);
         try {
