@@ -142,18 +142,20 @@ export default class ApiFunctions {
     
 
     async get_document(data = {}) {
-        this.validate_data(data, ['mainCollectionName'], ['mainDocID', 'subCollectionName', 'subDocID']);
+        this.validate_data(data, ['mainCollectionName','mainDocID'], ['subCollectionName', 'subDocID']);
         try {
-            let ref = data.mainDocID 
-                ? doc(firestore, data.mainCollectionName, data.mainDocID) 
-                : collection(firestore, data.mainCollectionName);
+            let ref;
 
+            ref = doc(firestore, data.mainCollectionName, data.mainDocID);
+    
             if (data.subCollectionName) {
-                ref = data.subDocID 
-                    ? doc(ref, data.subCollectionName, data.subDocID) 
-                    : collection(ref, data.subCollectionName);
+                if (data.subDocID) {
+                    ref = doc(ref, data.subCollectionName, data.subDocID);
+                } else {
+                    throw new Error("subDocID è obbligatorio per accedere a un documento nella sottocollezione.");
+                }
             }
-
+    
             const snapshot = await getDoc(ref);
             if (snapshot.exists()) {
                 return { success: true, data: snapshot.data() };
@@ -164,6 +166,7 @@ export default class ApiFunctions {
             return { success: false, error: error.message };
         }
     }
+    
 
     async update_document(data = {}) {
         this.validate_data(data, ['mainCollectionName', 'mainDocID'], ['subCollectionName', 'subDocID']);
