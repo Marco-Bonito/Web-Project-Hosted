@@ -64,7 +64,7 @@ export default class ApiFunctions {
     async get_user_data(userData = {}) {
         this.validate_data(userData, ['ID']);
         try {
-            const userDoc = doc(firestore, 'users', userData.ID);
+            const userDoc = doc(firestore, 'Users', userData.ID);
             const snapshot = await getDoc(userDoc);
             if (snapshot.exists()) {
                 return { success: true, data: snapshot.data() };
@@ -79,7 +79,7 @@ export default class ApiFunctions {
     async create_user(userData = {}) {
         this.validate_data(userData, ['ID']);
         try {
-            const userDoc = doc(firestore, 'users', userData.ID);
+            const userDoc = doc(firestore, 'Users', userData.ID);
             await setDoc(userDoc, userData);
             return { success: true, message: 'Utente creato con successo' };
         } catch (error) {
@@ -90,7 +90,7 @@ export default class ApiFunctions {
     async update_user(userData = {}) {
         this.validate_data(userData, [], ['ID']);
         try {
-            const userDoc = doc(firestore, 'users', userData.ID);
+            const userDoc = doc(firestore, 'Users', userData.ID);
             await updateDoc(userDoc, userData);
             return { success: true, message: 'Utente aggiornato con successo' };
         } catch (error) {
@@ -101,7 +101,7 @@ export default class ApiFunctions {
     async delete_user(userData = {}) {
         this.validate_data(userData, ['ID']);
         try {
-            const userDoc = doc(firestore, 'users', userData.ID);
+            const userDoc = doc(firestore, 'Users', userData.ID);
             await deleteDoc(userDoc);
             return { success: true, message: 'Utente eliminato con successo' };
         } catch (error) {
