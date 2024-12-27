@@ -175,8 +175,7 @@ export default class ApiFunctions {
             if (data.subCollectionName && data.subDocID) {
                 ref = doc(ref, data.subCollectionName, data.subDocID);
             }
-
-            await updateDoc(ref, data.documentData);
+            await setDoc(ref, data, { merge: true });
             return { success: true, message: 'Documento aggiornato con successo' };
         } catch (error) {
             return { success: false, error: error.message };
