@@ -5,7 +5,7 @@ import {
     signOut 
 } from 'firebase/auth';
 import { 
-    doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, getDocs 
+    doc, setDoc, addDoc, getDoc, updateDoc, deleteDoc, collection, query, getDocs 
 } from 'firebase/firestore';
 
 export default class ApiFunctions {
@@ -109,26 +109,37 @@ export default class ApiFunctions {
         }
     }
 
-    // Funzioni generalizzate per Firestore
     async create_document(data = {}) {
         this.validate_data(data, ['mainCollectionName'], ['mainDocID', 'subCollectionName', 'subDocID']);
         try {
-            let ref = data.mainDocID 
-                ? doc(firestore, data.mainCollectionName, data.mainDocID) 
-                : collection(firestore, data.mainCollectionName);
-            
-            if (data.subCollectionName) {
-                ref = data.subDocID 
-                    ? doc(ref, data.subCollectionName, data.subDocID) 
-                    : collection(ref, data.subCollectionName);
+            let ref;
+    
+            if (data.mainDocID) {
+                ref = doc(firestore, data.mainCollectionName, data.mainDocID);
+            } else {
+                ref = collection(firestore, data.mainCollectionName);
             }
-
-            await setDoc(ref, data.documentData);
+    
+            if (data.subCollectionName) {
+                if (data.subDocID) {
+                    ref = doc(ref, data.subCollectionName, data.subDocID);
+                } else {
+                    ref = collection(ref, data.subCollectionName); 
+                }
+            }
+    
+            if (ref.type === "document" && ref.id) {
+                await setDoc(ref, data);
+            } else {
+                await addDoc(ref, data);
+            }
+    
             return { success: true, message: 'Documento creato con successo' };
         } catch (error) {
             return { success: false, error: error.message };
         }
     }
+    
 
     async get_document(data = {}) {
         this.validate_data(data, ['mainCollectionName'], ['mainDocID', 'subCollectionName', 'subDocID']);
@@ -186,7 +197,9 @@ export default class ApiFunctions {
 
     validate_data(data = {}, necessaryField = [], optionalField = []) {
         for (const field of necessaryField) {
-            if (!data[field]) throw new Error(`Il campo ${field} è necessario.`);
+            if (!data[field]) {
+              throw new Error(`Il campo ${field} è necessario.`);
+            }
         }
     }
 }
