@@ -11,9 +11,10 @@ import axios from "axios";
 import { fileURLToPath } from "url";
 import multer from "multer";
 import fs from "fs";
-import { Buffer } from 'buffer';
-import {google} from 'googleapis'
-import { Readable } from 'stream';
+import { Buffer } from "buffer";
+import { google } from "googleapis";
+import { Readable } from "stream";
+import * as mega from "megajs";
 
 dotenv.config();
 const app = express();
@@ -34,12 +35,65 @@ const instagram = new InstagramFunctions();
 const twitter = new TwitterFunctions();
 const facebook = new FacebookFunctions();
 const tiktok = new TikTokFunctions();
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.all("/api", async (req, res) => {
-  const { action } = req.query.action;
+  const { action } = req.query;
   const data = req.body;
 
   switch (action) {
+    case "upload_to_mega":
+      try {
+        // Usa multer come middleware per il caricamento dei file
+        upload.single('file')(req, res, async (err) => {
+          if (err) {
+            return res.status(400).json({ error: err.message });
+          }
+
+          if (!req.file) {
+            return res.status(400).json({ error: "No file provided" });
+          }
+
+          const fileBuffer = req.file.buffer; // Il file caricato è un buffer in memoria
+          const fileName = req.file.originalname;
+
+          // Login a Mega e carica il file
+          const storage = new mega.Storage({
+            email: process.env.MEGA_EMAIL,  // Usa variabili d'ambiente per proteggere le credenziali
+            password: process.env.MEGA_PASSWORD,
+          });
+
+          storage.on("ready", () => {
+            console.log("Accesso effettuato a Mega.nz!");
+
+            const uploadStream = storage.upload({ name: fileName , allowUploadBuffering: true});
+
+            // Carica il file direttamente dalla memoria (Buffer) a Mega
+            const stream = Readable.from(fileBuffer);
+            stream.pipe(uploadStream);
+
+            uploadStream.on("complete", function () {
+              console.log("Caricamento completato!", this.downloadLink);
+              res.json({ success: true, downloadLink: this.downloadLink });
+            });
+
+            uploadStream.on("error", (err) => {
+              console.error("Errore durante il caricamento:", err);
+              res.status(500).json({ error: "Errore durante il caricamento su Mega.nz" });
+            });
+          });
+
+          storage.on("error", (err) => {
+            console.error("Errore durante il login a Mega.nz:", err);
+            res.status(500).json({ error: "Errore durante il login a Mega.nz" });
+          });
+        });
+      } catch (error) {
+        console.error("Errore:", error);
+        res.status(500).json({ error: error.message });
+      }
+      break;
+
     case "login_user":
       const loginResult = await functions.login_user(data);
       res.json(loginResult);
@@ -110,7 +164,9 @@ app.all("/instagram", async (req, res) => {
       case "callback":
         const { code } = req.query;
         if (!code) {
-          return res.status(400).json({ error: "Authorization code not provided" });
+          return res
+            .status(400)
+            .json({ error: "Authorization code not provided" });
         }
         const callbackResponse = await instagram.handleCallback(code);
         res.json(callbackResponse);
@@ -152,8 +208,8 @@ app.all("/instagram", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-/*
 
+/*
 //TEST FILE UPLOAD
 
 // Configura multer per caricare i file in memoria
@@ -235,7 +291,6 @@ function bufferToStream(buffer) {
   });
 */
 
-  
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server avviato su http://localhost:${PORT}`);
