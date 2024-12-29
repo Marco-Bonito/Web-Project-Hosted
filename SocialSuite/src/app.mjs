@@ -1,10 +1,19 @@
 import ApiFunctions from "./api_functions.js";
+import InstagramFunctions from "./instagram_functions.js";
+import TwitterFunctions from "./twitter_functions.js";
+import TikTokFunctions from "./tiktok_functions.js";
+import FacebookFunctions from "./facebook_functions.js";
 import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import path from "path";
 import axios from "axios";
 import { fileURLToPath } from "url";
+import multer from "multer";
+import fs from "fs";
+import { Buffer } from 'buffer';
+import {google} from 'googleapis'
+import { Readable } from 'stream';
 
 dotenv.config();
 const app = express();
@@ -21,19 +30,10 @@ app.get("/", (req, res) => {
 app.use(bodyParser.json());
 
 const functions = new ApiFunctions();
-
-/*
-INSTAGRAM DATA
-*/
-const AUTHORIZATION_URL = "https://api.instagram.com/oauth/authorize";
-const TOKEN_URL = "https://api.instagram.com/oauth/access_token";
-const CLIENT_ID = process.env.INSTAGRAM_APP_ID;
-const CLIENT_SECRET = process.env.INSTAGRAM_APP_SECRET_KEY;
-const REDIRECT_URI = "https://socialsuite.site/instagram?action=callback";
-const INSTAGRAM_GRAPH_API = "https://graph.instagram.com";
-/*
-INSTAGRAM DATA FINE
-*/
+const instagram = new InstagramFunctions();
+const twitter = new TwitterFunctions();
+const facebook = new FacebookFunctions();
+const tiktok = new TikTokFunctions();
 
 app.all("/api", async (req, res) => {
   const { action } = req.query.action;
@@ -105,151 +105,137 @@ app.all("/instagram", async (req, res) => {
   const instagram_action = req.query.action;
   const data = req.body;
 
-  switch (instagram_action) {
-    case "callback":
-      const { code } = req.query.code;
-
-      if (!code) {
-        return res
-          .status(400)
-          .json({ error: "Authorization code not provided" });
-      }
-
-      try {
-        const tokenResponse = await axios.post(TOKEN_URL, null, {
-          params: {
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
-            grant_type: "authorization_code",
-            redirect_uri: REDIRECT_URI,
-            code: code,
-          },
-        });
-
-        const tokenData = tokenResponse.data;
-
-        const accessToken = tokenData.access_token;
-        const userId = tokenData.user_id;
-
-        if (!accessToken || !userId) {
-          return res
-            .status(500)
-            .json({ error: "Invalid token data received from Instagram" });
+  try {
+    switch (instagram_action) {
+      case "callback":
+        const { code } = req.query;
+        if (!code) {
+          return res.status(400).json({ error: "Authorization code not provided" });
         }
+        const callbackResponse = await instagram.handleCallback(code);
+        res.json(callbackResponse);
+        break;
 
-        res.json({ access_token: accessToken, user_id: userId });
-      } catch (error) {
-        res
-          .status(500)
-          .json({
-            error: "Failed to retrieve access token",
-            details: error.response?.data || error.message,
-          });
-      }
-      break;
+      case "authorize":
+        const authUrl = instagram.getAuthorizationUrl();
+        res.redirect(authUrl);
+        break;
 
-    case "authorize":
-      const authorizationRedirectUrl = `${AUTHORIZATION_URL}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=user_profile,user_media&response_type=code`;
-      res.redirect(authorizationRedirectUrl);
-      break;
+      case "deauthorize":
+        const deauthResponse = await instagram.handleDeauthorization(data);
+        res.json(deauthResponse);
+        break;
 
-    case "deauthorize":
-      res.json({ status: "deauthorization received" });
-      break;
+      case "dataDelation":
+        const dataDeletionResponse = await instagram.handleDataDeletion(data);
+        res.json(dataDeletionResponse);
+        break;
 
-    case "dataDelation":
-      res.json({ status: "data deletion request received" });
-      break;
-
-    case "webhook":
-      const verifyToken = req.query["hub.verify_token"];
-      const challenge = req.query["hub.challenge"];
-
-      if (verifyToken == process.env.VERIFY_TOKEN_INSTAGRAM_WEBHOOKS) {
-        res.send(challenge);
-      } else {
-        res.status(403).send("Verification failed");
-      }
-      break;
-
-    case "postOnInstagram":
-      const data = req.body;
-      const accessToken = data.access_token;
-      const igId = data.ig_id;
-      const mediaUrl = data.media_url;
-      const mediaType = data.media_type;
-      const isCarouselItem = data.is_carousel_item || false;
-
-      if (!accessToken || !igId || !mediaUrl || !mediaType) {
-        return res.status(400).json({
-          error: "Access token, IG ID, media URL, and media type are required",
-        });
-      }
-
-      try {
-        const mediaContainerResponse = await axios.post(
-          `${INSTAGRAM_GRAPH_API}/${igId}/media`,
-          null,
-          {
-            params: {
-              media_type: mediaType,
-              [mediaType === "IMAGE" ? "image_url" : "video_url"]: mediaUrl,
-              is_carousel_item: isCarouselItem,
-              access_token: accessToken,
-            },
-          }
-        );
-
-        if (mediaContainerResponse.status !== 200) {
-          return res.status(mediaContainerResponse.status).json({
-            error: "Failed to create media container",
-            details: mediaContainerResponse.data,
-          });
+      case "webhook":
+        const webhookResponse = await instagram.handleWebhook(req.query);
+        if (webhookResponse.success) {
+          res.send(webhookResponse.challenge);
+        } else {
+          res.status(403).send("Verification failed");
         }
+        break;
 
-        const containerId = mediaContainerResponse.data.id;
-        if (!containerId) {
-          return res
-            .status(500)
-            .json({ error: "Failed to retrieve container ID" });
-        }
+      case "postOnInstagram":
+        const postResponse = await instagram.postOnInstagram(data);
+        res.json(postResponse);
+        break;
 
-        const publishResponse = await axios.post(
-          `${INSTAGRAM_GRAPH_API}/${igId}/media_publish`,
-          null,
-          {
-            params: {
-              creation_id: containerId,
-              access_token: accessToken,
-            },
-          }
-        );
+      default:
+        res.status(400).json({ error: `Invalid Action ${instagram_action}` });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+/*
 
-        if (publishResponse.status !== 200) {
-          return res.status(publishResponse.status).json({
-            error: "Failed to publish post",
-            details: publishResponse.data,
-          });
-        }
+//TEST FILE UPLOAD
 
-        const publishedMediaId = publishResponse.data.id;
-        return res.json({
-          message: "Post published successfully",
-          media_id: publishedMediaId,
-        });
-      } catch (error) {
-        res.status(500).json({
-          error: "An error occurred while posting to Instagram",
-          details: error.response?.data || error.message,
-        });
-      }
-      break;
+// Configura multer per caricare i file in memoria
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+// Percorso assoluto del file JSON
+const filePath = path.join(__dirname, './social-suite-ll-mb-93433014622e.json');
 
-    default:
-      res.status(400).json({ error: `Invalid Action ${instagram_action}` });
+// Leggi il file JSON
+
+let json;
+let drive;
+let authGD;
+
+fs.readFile(filePath, 'utf8', (err, data) => {
+  if (err) {
+    console.error('Errore nel leggere il file JSON:', err);
+    return;
+  }
+
+  try {
+    json = JSON.parse(data);  // Parsea il contenuto del file come JSON
+    console.log(json);
+
+    // Usa il JSON come necessario, ad esempio passarlo come configurazione
+    authGD = new google.auth.GoogleAuth({
+      keyFile: json,  // Il JSON del file
+      scopes: ['https://www.googleapis.com/auth/drive.file'],
+    });
+
+    drive = google.drive({ version: 'v3', authGD });
+  } catch (error) {
+    console.error('Errore nel parsing del JSON:', error);
   }
 });
 
+
+// Converte il Buffer in un Readable Stream
+function bufferToStream(buffer) {
+    const stream = new Readable();
+    stream.push(buffer);
+    stream.push(null);
+    return stream;
+  }
+  
+  // Endpoint per caricare il file su Google Drive
+  app.post('/upload', upload.single('file'), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).send('No file uploaded.');
+    }
+  
+    const fileBuffer = req.file.buffer; // File in memoria come Buffer
+    const fileName = req.file.originalname; // Nome originale del file
+  
+    try {
+      // Carica il file su Google Drive
+      const fileMetadata = {
+        name: fileName,
+      };
+      const media = {
+        mimeType: req.file.mimetype,
+        body: bufferToStream(fileBuffer), // Usa un Readable Stream
+      };
+  
+      const response = await drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id',
+      });
+  
+      const fileId = response.data.id;
+      const fileLink = `https://drive.google.com/file/d/${fileId}/view`;
+  
+      res.status(200).send(`File uploaded successfully to Google Drive. Shareable link: ${fileLink}`);
+    } catch (error) {
+      console.error('Error uploading to Google Drive:', error);
+      res.status(500).send('Failed to upload file to Google Drive.');
+    }
+  });
+*/
+
+  
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server avviato su http://localhost:${PORT}`);
