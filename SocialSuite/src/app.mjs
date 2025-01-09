@@ -44,8 +44,7 @@ app.all("/api", async (req, res) => {
   switch (action) {
     case "upload_to_mega":
       try {
-        // Usa multer come middleware per il caricamento dei file
-        upload.single('file')(req, res, async (err) => {
+        upload.single("file")(req, res, async (err) => {
           if (err) {
             return res.status(400).json({ error: err.message });
           }
@@ -54,38 +53,80 @@ app.all("/api", async (req, res) => {
             return res.status(400).json({ error: "No file provided" });
           }
 
-          const fileBuffer = req.file.buffer; // Il file caricato è un buffer in memoria
-          const fileName = req.file.originalname;
+          const fileBuffer = req.file.buffer; // Buffer del file
+          const fileName = req.file.originalname; // Nome del file
+          const fileSize = req.file.size || Buffer.byteLength(fileBuffer); // Ottieni la dimensione del file
 
-          // Login a Mega e carica il file
           const storage = new mega.Storage({
-            email: process.env.MEGA_EMAIL,  // Usa variabili d'ambiente per proteggere le credenziali
+            email: process.env.MEGA_EMAIL,
             password: process.env.MEGA_PASSWORD,
           });
 
           storage.on("ready", () => {
             console.log("Accesso effettuato a Mega.nz!");
 
-            const uploadStream = storage.upload({ name: fileName , allowUploadBuffering: true});
+            // Usa `allowUploadBuffering` e verifica la dimensione
+            const uploadStream = storage.upload({
+              name: fileName,
+              size: fileSize,
+              allowUploadBuffering: true,
+            });
 
-            // Carica il file direttamente dalla memoria (Buffer) a Mega
+            // Trasforma il buffer in uno stream
             const stream = Readable.from(fileBuffer);
             stream.pipe(uploadStream);
 
-            uploadStream.on("complete", function () {
-              console.log("Caricamento completato!", this.downloadLink);
-              res.json({ success: true, downloadLink: this.downloadLink });
+            uploadStream.on("complete", (file) => {
+              console.log("Caricamento completato!");
+
+              // Genera il link di download
+              file.link((err, link) => {
+                if (err) {
+                  console.error("Errore generazione link:", err);
+                  return res
+                    .status(500)
+                    .json({ error: "Errore durante la generazione del link" });
+                }
+                console.log("Link di download:", link);
+
+                // Estrai l'ID e la chiave dal link Mega
+                const match = link.match(/\/file\/(.+?)#(.+)/);
+                if (!match) {
+                  return res
+                    .status(500)
+                    .json({
+                      error:
+                        "Errore durante l'estrazione dei parametri del link",
+                    });
+                }
+
+                const fileId = match[1];
+                const fileKey = match[2];
+                const directLink = `${req.protocol}://${req.get(
+                  "host"
+                )}/direct/${fileId}/${fileKey}`;
+
+                res.json({
+                  success: true,
+                  downloadLink: link, // Link Mega
+                  directLink, // Link diretto generato
+                });
+              });
             });
 
             uploadStream.on("error", (err) => {
               console.error("Errore durante il caricamento:", err);
-              res.status(500).json({ error: "Errore durante il caricamento su Mega.nz" });
+              res
+                .status(500)
+                .json({ error: "Errore durante il caricamento su Mega.nz" });
             });
           });
 
           storage.on("error", (err) => {
             console.error("Errore durante il login a Mega.nz:", err);
-            res.status(500).json({ error: "Errore durante il login a Mega.nz" });
+            res
+              .status(500)
+              .json({ error: "Errore durante il login a Mega.nz" });
           });
         });
       } catch (error) {
@@ -152,6 +193,30 @@ app.all("/api", async (req, res) => {
 
     default:
       res.status(400).json({ error: `Invalid Action ${action}` });
+  }
+});
+
+app.get("/direct/:fileId/:fileKey", async (req, res) => {
+  const { fileId, fileKey } = req.params;
+  try {
+    const fileUrl = `https://mega.nz/file/${fileId}#${fileKey}`;
+    const file = mega.file(fileUrl);
+
+    file.loadAttributes((err, file) => {
+      if (err) {
+        console.error("Errore nel caricamento:", err);
+        return res.status(500).send("Errore nel caricamento del file");
+      }
+
+      const stream = file.download();
+      res.setHeader("Content-Disposition", `inline; filename="${file.name}"`);
+      res.setHeader("Content-Type", file.mime || "application/octet-stream");
+
+      stream.pipe(res);
+    });
+  } catch (error) {
+    console.error("Errore:", error);
+    res.status(500).send("Errore durante il processo");
   }
 });
 
