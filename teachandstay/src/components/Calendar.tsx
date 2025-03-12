@@ -11,18 +11,13 @@ interface CalendarProps {
 const daysOfWeek = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
 const Calendar: React.FC<CalendarProps> = ({ currentMonth, events, onMonthChange }) => {
-  // Stato per il drag in corso
-  const [dragRange, setDragRange] = useState<{ start: number | null; end: number | null }>({
-    start: null,
-    end: null,
-  });
-  // Stato per la selezione finale (che rimane evidenziata)
-  const [selectedRange, setSelectedRange] = useState<{ start: number; end: number } | null>(null);
+  // Stato per la cella (giorno) selezionata, per aprire il dialog
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   // Calcola il primo giorno del mese e l'indice di partenza per le celle
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-  const dayOfWeek = firstDayOfMonth.getDay();
-  const startIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const dayOfWeek = firstDayOfMonth.getDay(); // 0 (Domenica) ... 6 (Sabato)
+  const startIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Per far partire la settimana da Lunedì
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
 
   // Creiamo un array di 42 celle (ipotetiche 6 righe x 7 colonne)
@@ -36,61 +31,26 @@ const Calendar: React.FC<CalendarProps> = ({ currentMonth, events, onMonthChange
   const lastRowIndex = Math.floor(lastDayIndex / 7);
   const totalRows = lastRowIndex + 1;
 
-  // Determina l'intervallo da evidenziare: se il drag è in corso, usa dragRange, altrimenti usa selectedRange
-  let range: { start: number; end: number } | null = null;
-  if (dragRange.start !== null && dragRange.end !== null) {
-    range = { start: Math.min(dragRange.start, dragRange.end), end: Math.max(dragRange.start, dragRange.end) };
-  } else if (selectedRange) {
-    range = selectedRange;
-  }
-
-  // Handler per il drag
-  const handleDragStart = (cellIndex: number, event: React.DragEvent<HTMLTableCellElement>) => {
-    // Nasconde l'immagine di trascinamento
-    event.dataTransfer.setDragImage(new Image(), 0, 0);
-    // Inizia un nuovo drag: reset della selezione finale
-    setSelectedRange(null);
-    setDragRange({ start: cellIndex, end: cellIndex });
-  };
-
-  const handleDragEnter = (cellIndex: number) => {
-    if (dragRange.start !== null) {
-      setDragRange(prev => ({ ...prev, end: cellIndex }));
+  // Handler per il click sulla cella: apre il dialog con i dettagli del giorno
+  const handleCellClick = (cellIndex: number) => {
+    const day = cells[cellIndex];
+    if (day !== null) {
+      setSelectedDay(day);
     }
   };
 
-  const handleDragEnd = () => {
-    if (dragRange.start !== null && dragRange.end !== null) {
-      const start = Math.min(dragRange.start, dragRange.end);
-      const end = Math.max(dragRange.start, dragRange.end);
-      // Filtra le celle che hanno un valore (giorni validi)
-      const highlightedCells = cells.slice(start, end + 1).filter(day => day !== null);
-      console.log('Celle evidenziate:', highlightedCells);
-      // Salva la selezione per mantenere l'evidenziazione
-      setSelectedRange({ start, end });
-    }
-    // Reset dello stato di drag
-    setDragRange({ start: null, end: null });
-  };
-
-  // Costruisce le righe della tabella
+  // Costruzione delle righe della tabella
   const rows = [];
   for (let i = 0; i < totalRows; i++) {
     const rowCells = [];
     for (let j = 0; j < 7; j++) {
       const cellIndex = i * 7 + j;
       const dayNumber = cells[cellIndex];
-      const isHighlighted = range !== null && cellIndex >= range.start && cellIndex <= range.end;
       rowCells.push(
         <td
           key={j}
-          className={`${styles.calendarCell} ${isHighlighted ? styles.highlight : ''}`}
-          draggable={true}
-          onDragStart={(e) => handleDragStart(cellIndex, e)}
-          onDragEnter={() => handleDragEnter(cellIndex)}
-          onDragEnd={handleDragEnd}
-          onDragOver={(e) => e.preventDefault()}
-          onClick={() => console.log('Cella cliccata:', cellIndex, dayNumber)}
+          className={styles.calendarCell}
+          onClick={() => handleCellClick(cellIndex)}
         >
           {dayNumber || ''}
         </td>
@@ -99,8 +59,14 @@ const Calendar: React.FC<CalendarProps> = ({ currentMonth, events, onMonthChange
     rows.push(<tr key={i}>{rowCells}</tr>);
   }
 
+  // Handler per chiudere il dialog
+  const handleCloseModal = () => {
+    setSelectedDay(null);
+  };
+
   return (
     <div>
+      {/* Navigazione per il mese, con i pulsanti vicini al nome del mese */}
       <div className={styles.monthNavigation}>
         <button onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
           {'<'}
@@ -113,6 +79,7 @@ const Calendar: React.FC<CalendarProps> = ({ currentMonth, events, onMonthChange
         </button>
       </div>
 
+      {/* Tabella del calendario */}
       <table className={styles.calendarTable}>
         <thead>
           <tr>
@@ -125,6 +92,19 @@ const Calendar: React.FC<CalendarProps> = ({ currentMonth, events, onMonthChange
         </thead>
         <tbody>{rows}</tbody>
       </table>
+
+      {/* Dialog per i dettagli del giorno */}
+      {selectedDay !== null && (
+        <div className={styles.modalOverlay} onClick={handleCloseModal}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h3>Dettagli del giorno {selectedDay}</h3>
+            <p>
+              Qui puoi visualizzare ulteriori informazioni ed eventi del giorno {selectedDay}.
+            </p>
+            <button onClick={handleCloseModal}>Chiudi</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

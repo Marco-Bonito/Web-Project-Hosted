@@ -27,8 +27,26 @@
     gap: 8px;
   }
   
-  /* Stile per le celle evidenziate durante il drag */
-  .highlight {
-    background-color: #d0eaff;
+  /* Stili per il dialog/modal */
+  .modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modalContent {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 80%;
+    text-align: center;
   }
   
