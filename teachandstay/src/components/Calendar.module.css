@@ -1,0 +1,34 @@
+.calendarTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  
+  .calendarHeader {
+    border: 1px solid #ddd;
+    padding: 10px;
+  }
+  
+  .calendarCell {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+    transition: background-color 0.3s;
+  }
+  
+  .calendarCell:hover {
+    background-color: #f0f0f0;
+    cursor: pointer;
+  }
+  
+  .monthNavigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  /* Stile per le celle evidenziate durante il drag */
+  .highlight {
+    background-color: #d0eaff;
+  }
+  

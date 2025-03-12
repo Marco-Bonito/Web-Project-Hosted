@@ -1,6 +1,6 @@
 // src/app/layout.tsx
 import Navigation from '@/components/Navigation';
-import '../globals.css';
+import './globals.css';
 
 
 export default function RootLayout({
