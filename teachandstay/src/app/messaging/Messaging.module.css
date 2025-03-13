@@ -1,6 +1,6 @@
 .messagingContainer {
   display: flex;
-  height: calc(100vh - 60px); /* Regola se hai un header fisso */
+  height: 95vh; /* Regola se hai un header fisso */
 }
 
 .chatList {
@@ -54,16 +54,22 @@
   padding: 10px;
   border-radius: 8px;
   max-width: 70%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  white-space: normal;
 }
 
-/* Messaggi inviati dall'altro (allineati a sinistra) */
 .otherUserMessage {
   align-self: flex-start;
   background-color: #f8d7da;
   padding: 10px;
   border-radius: 8px;
   max-width: 70%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  white-space: normal;
 }
+
 
 .inputContainer {
   display: flex;
@@ -86,4 +92,21 @@
   color: #fff;
   border-radius: 4px;
   cursor: pointer;
+}
+
+
+@media (max-width: 768px) {
+  .messagingContainer {
+    flex-direction: column;
+  }
+  
+  .chatList {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .chatWindow {
+    width: 100%;
+  }
 }
