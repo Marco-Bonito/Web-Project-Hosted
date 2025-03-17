@@ -13,50 +13,73 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id          Int                @id @default(autoincrement())
-  email       String             @unique
-  password    String
-  name        String?
-  events      EventParticipant[]
-  chats       ChatParticipant[]
-  // Aggiungi altri campi se necessario
+model Utente {
+  id                  Int              @id @default(autoincrement()) // IDUtente
+  nome                String
+  cognome             String
+  dataIscrizione      DateTime         @default(now())
+  email               String           @unique
+  password            String
+  tipologiaAbbonamento String
+  tipologiaUtente     String
+
+  // Relazioni con le prenotazioni
+  prenotazioniAsHost     Prenotazione[] @relation("HostPrenotazioni")
+  prenotazioniAsTeacher  Prenotazione[] @relation("TeacherPrenotazioni")
+  
+  // Relazioni con le conversazioni
+  conversazioniOwner     Conversazione[] @relation("OwnerConversazioni")
+  conversazioniPartner   Conversazione[] @relation("PartnerConversazioni")
+  
+  // Relazioni con i messaggi
+  messaggi               Messaggio[]
 }
 
-model Event {
-  id           Int                @id @default(autoincrement())
-  title        String
-  date         DateTime
-  participants EventParticipant[]
+model Prenotazione {
+  idPrenotazione      Int      @id @default(autoincrement())
+  dataInizio          DateTime
+  dataFine            DateTime
+  linguaInsegnamento  String
+  nazione             String
+  citta               String
+  indirizzo           String
+  numeroOspiti        Int
+  numeroAnimali       Int
+  animali             String    // Può essere una descrizione o una lista in formato stringa
+  rimborso            Boolean
+  vittoAlloggio       Boolean
+  statoPrenotazione   String
+
+  // Relazioni: host e teacher, entrambi sono utenti
+  hostId              Int
+  host                Utente   @relation("HostPrenotazioni", fields: [hostId], references: [id])
+  
+  teacherId           Int
+  teacher             Utente   @relation("TeacherPrenotazioni", fields: [teacherId], references: [id])
 }
 
-model EventParticipant {
-  userId  Int
-  eventId Int
-  user    User   @relation(fields: [userId], references: [id])
-  event   Event  @relation(fields: [eventId], references: [id])
-  @@id([userId, eventId])
+model Conversazione {
+  idConversazione   Int      @id @default(autoincrement())
+  
+  // Relazioni con gli utenti
+  ownerId           Int
+  conversationOwner Utente   @relation("OwnerConversazioni", fields: [ownerId], references: [id])
+  
+  partnerId         Int
+  conversationPartner Utente @relation("PartnerConversazioni", fields: [partnerId], references: [id])
+  
+  // Relazione con i messaggi
+  messaggi          Messaggio[]
 }
 
-model Chat {
-  id           Int               @id @default(autoincrement())
-  messages     Message[]
-  participants ChatParticipant[]
-}
-
-model ChatParticipant {
-  userId Int
-  chatId Int
-  user   User @relation(fields: [userId], references: [id])
-  chat   Chat @relation(fields: [chatId], references: [id])
-  @@id([userId, chatId])
-}
-
-model Message {
-  id        Int      @id @default(autoincrement())
-  content   String
-  createdAt DateTime @default(now())
-  type      String   // 'user' o 'other'
-  chatId    Int
-  chat      Chat     @relation(fields: [chatId], references: [id])
+model Messaggio {
+  idMessaggio      Int      @id @default(autoincrement())
+  conversazioneId  Int
+  conversazione    Conversazione @relation(fields: [conversazioneId], references: [idConversazione])
+  
+  utenteId         Int
+  utente           Utente   @relation(fields: [utenteId], references: [id])
+  
+  messaggio        String
+  dataInvio        DateTime @default(now())
 }
