@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import LoginPage from './Login';
+import LoginPage from './page';
 import '@testing-library/jest-dom';
 
 describe('LoginPage', () => {
