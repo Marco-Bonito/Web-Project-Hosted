@@ -9,15 +9,15 @@ export default function Navigation() {
         <Link href="/">TeachAndStay</Link>
       </div>
       <nav className={styles.nav}>
-        <Link href="/about">About</Link>
-        <Link href="/services">Services</Link>
+        <Link href="/screen/about">About</Link>
+        <Link href="/screen/services">Services</Link>
         {/* Altri link di navigazione */}
       </nav>
       <div className={styles.authButtons}>
-        <Link href="/login">
+        <Link href="/screen/login">
           <button>Login</button>
         </Link>
-        <Link href="/register">
+        <Link href="/screen/register">
           <button>Registrazione</button>
         </Link>
       </div>

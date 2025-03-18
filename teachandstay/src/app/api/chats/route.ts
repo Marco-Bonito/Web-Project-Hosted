@@ -46,3 +46,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Errore nel recupero delle conversazioni' }, { status: 500 });
   }
 }
+ 
