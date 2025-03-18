@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react';
 import styles from './Login.module.css';
 
 export default function LoginPage() {
@@ -9,28 +9,21 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const router = useRouter();
+  const { data: session } = useSession();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        setError(errorData.error || 'Login fallito');
-      } else {
-        // Login riuscito: reindirizza alla dashboard
-        router.push('/dashboard');
-      }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('Errore di rete');
+    const result = await signIn('credentials', {
+      redirect: false,
+      email,
+      password,
+      role,
+    });
+
+    if (result?.error) {
+      setError(result.error);
     }
   };
 
@@ -48,6 +41,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={styles.input}
+              data-testid="email-input"
             />
           </label>
         </div>
@@ -60,6 +54,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={styles.input}
+              data-testid="password-input"
             />
           </label>
         </div>
@@ -70,6 +65,7 @@ export default function LoginPage() {
               value={role}
               onChange={(e) => setRole(e.target.value as 'host' | 'teacher')}
               className={styles.select}
+              data-testid="role-select"
             >
               <option value="host">Host</option>
               <option value="teacher">Teacher</option>
